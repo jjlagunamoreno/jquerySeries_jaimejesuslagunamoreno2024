@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modificar Personaje</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/custom-style.css">
+</head>
+
+<body>
+    <!-- menu -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <img src="https://appseries.azurewebsites.net/static/media/logo1.1408c71b2c87ca1fb473.png" alt="logo"
+                    style="width: 80px;">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="home.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="createPersonaje.html">Nuevo Personaje</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="updatePersonaje.html">Modificar Personaje</a>
+                    </li>
+                    <!-- dropdown serie -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="dropdownSerie" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            Serie
+                        </a>
+                        <ul class="dropdown-menu" id="seriesDropdown" aria-labelledby="dropdownSerie">
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Formulario de modificación de personaje -->
+    <div class="container text-center my-5">
+        <h2 class="display-4 mb-4">Modificar Personaje</h2>
+        <hr class="border border-primary opacity-100">
+        <form id="formModificarPersonaje">
+            <div class="mt-3">
+                <label class="form-label">Serie</label>
+                <select class="form-select" id="serieSelect" required></select>
+            </div>
+            <div class="mt-3">
+                <label class="form-label">Personaje</label>
+                <select class="form-select" id="personajeSelect" required></select>
+            </div>
+            <button type="submit" class="btn btn-success w-100 mt-3">Modificar Personaje</button>
+        </form>
+
+        <!-- Vista de imágenes seleccionadas -->
+        <div class="row mt-3">
+            <div class="col-6" id="serieImagen">
+                <h3 class="serieNombre"></h3>
+                <hr class="border border-primary opacity-100">
+                <img class="img-fluid" src="" alt="Serie seleccionada">
+            </div>
+            <div class="col-6" id="personajeImagen">
+                <h3 class="personajeNombre"></h3>
+                <hr class="border border-primary opacity-100">
+                <img class="img-fluid" src="" alt="Personaje seleccionado">
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/jquery-3.7.1.js"></script>
+
+    <script>
+        let urlGlobal = "https://apiseriespersonajes.azurewebsites.net";
+
+        $(document).ready(function () {
+            var requestSeries = "/api/Series";
+            $.ajax({
+                url: urlGlobal + requestSeries,
+                type: "GET",
+                contentType: "application/json",
+                success: function (data) {
+                    var dropdownHtml = "";
+                    var selectHtml = "";
+                    $.each(data, function (index, serie) {
+                        dropdownHtml += "<li><a class='dropdown-item' href='loadSerie.html?idserie=" + serie.idSerie + "'>" + serie.nombre + "</a></li>";
+                        selectHtml += "<option value='" + serie.idSerie + "'>" + serie.nombre + "</option>";
+                    });
+                    $("#seriesDropdown").html(dropdownHtml);
+                    $("#serieSelect").html(selectHtml);
+                },
+                error: function () {
+                    console.error("Error al cargar las series...");
+                }
+            });
+            cargarSeries();
+            cargarPersonajes();
+
+            // cargar imagen y nombre de la serie seleccionada
+            $("#serieSelect").change(function () {
+                const idSerie = $(this).val();
+                const serieSeleccionada = window.seriesData.find(serie => serie.idSerie == idSerie);
+                mostrarImagenSerie(serieSeleccionada);
+            });
+
+            // cargar imagen y nombre del personaje seleccionado
+            $("#personajeSelect").change(function () {
+                const idPersonaje = $(this).val();
+                const personajeSeleccionado = window.personajesData.find(personaje => personaje.idPersonaje == idPersonaje);
+                mostrarImagenPersonaje(personajeSeleccionado);
+            });
+
+            // PUT - personaje de una serie a otra
+            $("#formModificarPersonaje").submit(function (e) {
+                e.preventDefault();
+                const idPersonaje = $("#personajeSelect").val();
+                const idNuevaSerie = $("#serieSelect").val();
+
+                $.ajax({
+                    url: urlGlobal + '/api/Personajes/' + idPersonaje + '/' + idNuevaSerie,
+                    type: "PUT",
+                    success: function () {
+                        alert("Personaje movido a nueva serie con éxito.");
+                        // Redirige a la página de la serie seleccionada
+                        window.location.href = 'loadSerie.html?idserie=' + idNuevaSerie;
+                    },
+                    error: function () {
+                        alert("Error al mover el personaje a la nueva serie.");
+                    }
+                });
+            });
+        });
+
+        function cargarSeries() {
+            $.ajax({
+                url: urlGlobal + '/api/Series',
+                type: "GET",
+                success: function (data) {
+                    window.seriesData = data;
+                    let seriesOptions = data.map(serie => `<option value="${serie.idSerie}">${serie.nombre}</option>`).join('');
+                    $("#serieSelect").html(seriesOptions);
+                    mostrarImagenSerie(data[0]);
+                },
+                error: function () {
+                    console.error("Error al cargar las series.");
+                }
+            });
+        }
+
+        function cargarPersonajes() {
+            $.ajax({
+                url: urlGlobal + '/api/Personajes',
+                type: "GET",
+                success: function (data) {
+                    window.personajesData = data;
+                    let personajesOptions = data.map(personaje => `<option value="${personaje.idPersonaje}">${personaje.nombre}</option>`).join('');
+                    $("#personajeSelect").html(personajesOptions);
+                    mostrarImagenPersonaje(data[0]);
+                },
+                error: function () {
+                    console.error("Error al cargar los personajes.");
+                }
+            });
+        }
+
+        function mostrarImagenSerie(serie) {
+            $("#serieImagen img").attr("src", serie.imagen);
+            $("#serieImagen .serieNombre").text(serie.nombre);
+        }
+
+        function mostrarImagenPersonaje(personaje) {
+            $("#personajeImagen img").attr("src", personaje.imagen);
+            $("#personajeImagen .personajeNombre").text(personaje.nombre);
+        }
+    </script>
+</body>
+
+</html>
